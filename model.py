@@ -5,11 +5,12 @@ import torch
 import transformers
 from langchain import HuggingFacePipeline
 from langchain.prompts import PromptTemplate
-from hf_embedding import HuggingFaceEmbeddings
+# from hf_embedding import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 
 # model_id = "gpt2"
 model_id = "meta-llama/Llama-2-7b-chat-hf"
-pipeline_kwargs={"temperature":0.0, "max_new_tokens": 128, "repetition_penalty": 1.1}
+pipeline_kwargs={"temperature":0.0, "max_new_tokens": 200, "repetition_penalty": 1.1}
 
 # set quantization configuration to load large model with less GPU memory
 # this requires the `bitsandbytes` library
@@ -51,10 +52,16 @@ llm = HuggingFacePipeline(pipeline=pipeline)
 llm.pipeline.tokenizer.return_token_type_ids = False
 llm.pipeline.tokenizer.pad_token = llm.pipeline.tokenizer.eos_token
 
+# hfe = HuggingFaceEmbeddings(
+#     model=model,
+#     tokenizer=tokenizer
+# )
 hfe = HuggingFaceEmbeddings(
-    model=model,
-    tokenizer=tokenizer
+    model_name="sentence-transformers/multi-qa-MiniLM-L6-cos-v1",
+    encode_kwargs={'normalize_embeddings': True},
+    model_kwargs={'device': 'cuda:0'},
 )
+hfe.client[0].tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 print("Embeddings loaded")
 
 qaprompt = PromptTemplate(

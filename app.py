@@ -4,9 +4,8 @@ from paperqa import Docs, Doc, PromptCollection
 from paperqa.types import Text
 
 if 'docs' not in st.session_state:
-    prompts = PromptCollection(qa=qaprompt)
     st.session_state.docdb = []
-    st.session_state.docs = Docs(llm=llm, embeddings=hfe, prompts=prompts)
+    st.session_state.docs = Docs(llm=llm, embeddings=hfe)
     st.session_state.context = ""
 
 
