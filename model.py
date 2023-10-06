@@ -1,15 +1,17 @@
 import os
-os.environ["OPENAI_API_KEY"] = "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"
-
 import torch
 import transformers
-from langchain import HuggingFacePipeline
-from langchain.prompts import PromptTemplate
-from hf_embedding import HuggingFaceEmbeddings
 
-# model_id = "gpt2"
-model_id = "meta-llama/Llama-2-7b-chat-hf"
-pipeline_kwargs={"temperature":0.0, "max_new_tokens": 200, "repetition_penalty": 1.1}
+model_id = "ura-hcmut/ura-llama-7b"
+
+en_pipeline_kwargs={"temperature": 1.0, 
+                    "max_new_tokens": 250, 
+                    "top_k": 1, 
+                    "repetition_penalty": 1.1}
+vi_pipeline_kwargs={"temperature": 1.0, 
+                    "max_new_tokens": 250, 
+                    "top_k": 1,
+                    "repetition_penalty": 1.1}
 
 # set quantization configuration to load large model with less GPU memory
 # this requires the `bitsandbytes` library
@@ -20,45 +22,30 @@ bnb_config = transformers.BitsAndBytesConfig(
     bnb_4bit_compute_dtype=torch.bfloat16
 )
 
-# begin initializing HF items, need auth token for these
-model_config = transformers.AutoConfig.from_pretrained(
-    model_id
-)
-
-model = transformers.AutoModelForCausalLM.from_pretrained(
+vi_model = transformers.AutoModelForCausalLM.from_pretrained(
     model_id,
     trust_remote_code=True,
-    config=model_config,
     quantization_config=bnb_config,
-    device_map='auto'
+    device_map='auto',
+    use_auth_token=True
 )
-model.eval()
-print(f"Model loaded")
+vi_model.config.use_cache = True
+vi_model.config.pretraining_tp = 1
+vi_model.eval()
 
 tokenizer = transformers.AutoTokenizer.from_pretrained(
-    model_id
+    model_id,
+    trust_remote_code=True,
+    use_auth_token=True
 )
+tokenizer.pad_token = tokenizer.eos_token
 
-pipeline = transformers.pipeline(
-    model=model, 
+print(f"Model loaded")
+
+vi_pipeline = transformers.pipeline(
+    model=vi_model, 
     tokenizer=tokenizer,
-    return_full_text=True,  # langchain expects the full text
+    return_full_text=False,  # langchain expects the full text
     task='text-generation',
-    **pipeline_kwargs
+    **vi_pipeline_kwargs
 )
-
-llm = HuggingFacePipeline(pipeline=pipeline)
-llm.pipeline.tokenizer.return_token_type_ids = False
-llm.pipeline.tokenizer.pad_token = llm.pipeline.tokenizer.eos_token
-
-hfe = HuggingFaceEmbeddings(
-    model=model,
-    tokenizer=tokenizer
-)
-print("Embeddings loaded")
-
-qaprompt = PromptTemplate(
-    input_variables=["context", "question"],
-    template="Context: {context}\n"
-    "Question: {question}\n"
-    "Answer: ")

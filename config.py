@@ -2,6 +2,7 @@ import os
 
 bind = 'localhost:10024'
 workers = 1
+timeout = 500
 accesslog = '-'
 loglevel = 'debug'
 capture_output = True
